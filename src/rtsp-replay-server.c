@@ -814,9 +814,17 @@ int main(int argc, char *argv[]) {
   gchar *service;
   gchar *uri = NULL;
   gint64 num_loops = -1;
-  GOptionEntry options[] = {{"num-loops", 0, 0, G_OPTION_ARG_INT64, &num_loops,
+  gchar *port = "8554";
+  gchar *mount_point = "/test";
+  GOptionEntry options[] = {{"uri", 0, 0, G_OPTION_ARG_STRING, &uri,
+                             "uri or file to stream (required)", NULL},
+                            {"num-loops", 0, 0, G_OPTION_ARG_INT64, &num_loops,
                              "The number of loops (default = -1, infinite)",
                              NULL},
+                            {"port", 0, 0, G_OPTION_ARG_STRING, &port,
+                             "port to serve on (default = '8554')", NULL},
+                            {"mount", 0, 0, G_OPTION_ARG_STRING, &mount_point,
+                             "mount point of server (default = '/test')", NULL},
                             {NULL}};
 
   optctx = g_option_context_new("RTSP Replay Server");
@@ -828,23 +836,18 @@ int main(int argc, char *argv[]) {
     g_clear_error(&error);
     return -1;
   }
-  if (argc < 2) {
-    g_print("%s\n", g_option_context_get_help(optctx, TRUE, NULL));
-    return 1;
-  }
 
   g_option_context_free(optctx);
 
   /* check if URI is valid, otherwise convert filename to URI if it's a file */
-  if (gst_uri_is_valid(argv[1])) {
-    uri = g_strdup(argv[1]);
-  } else if (g_file_test(argv[1], G_FILE_TEST_EXISTS)) {
-    uri = gst_filename_to_uri(argv[1], NULL);
-  } else {
-    g_printerr("Unrecognised command line argument '%s'.\n"
-               "Please pass an URI or file as argument!\n",
-               argv[1]);
-    return -1;
+
+  if (!gst_uri_is_valid(uri)) {
+    if (g_file_test(uri, G_FILE_TEST_EXISTS)) {
+      uri = gst_filename_to_uri(uri, NULL);
+    } else {
+      g_printerr("Invalid uri %s\n", uri);
+      return -1;
+    }
   }
 
   if (num_loops < -1 || num_loops == 0) {
@@ -866,14 +869,15 @@ int main(int argc, char *argv[]) {
   factory = gst_rtsp_media_factory_replay_new(uri, num_loops);
   g_free(uri);
 
-  gst_rtsp_mount_points_add_factory(mounts, "/test", factory);
+  gst_rtsp_mount_points_add_factory(mounts, mount_point, factory);
+  gst_rtsp_server_set_service(server, port);
 
   g_object_unref(mounts);
 
   gst_rtsp_server_attach(server, NULL);
 
   service = gst_rtsp_server_get_service(server);
-  g_print("stream ready at rtsp://127.0.0.1:%s/test\n", service);
+  g_print("stream ready at rtsp://127.0.0.1:%s%s\n", service, mount_point);
   g_free(service);
   g_main_loop_run(loop);
 
