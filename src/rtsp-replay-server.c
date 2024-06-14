@@ -316,7 +316,7 @@ static gboolean autoplug_continue_cb(GstElement *dbin, GstPad *pad,
 
   return FALSE;
 
-no_factory : {
+no_factory: {
   /* no payloader, continue autoplugging */
   GST_DEBUG_OBJECT(self, "no payloader found for caps %" GST_PTR_FORMAT, caps);
   return TRUE;
@@ -486,20 +486,20 @@ static void pad_added_cb(GstElement *dbin, GstPad *pad, GstReplayBin *self) {
   return;
 
   /* ERRORS */
-no_caps : {
+no_caps: {
   GST_WARNING("could not get caps from pad");
   g_free(padname);
   gst_object_unref(pad);
   return;
 }
-no_factory : {
+no_factory: {
   GST_DEBUG("no payloader found");
   g_free(padname);
   gst_caps_unref(caps);
   gst_object_unref(pad);
   return;
 }
-no_payloader : {
+no_payloader: {
   GST_ERROR("could not create payloader from factory");
   g_free(padname);
   gst_caps_unref(caps);
@@ -816,6 +816,7 @@ int main(int argc, char *argv[]) {
   gint64 num_loops = -1;
   gchar *port = "8554";
   gchar *mount_point = "/test";
+  gchar *address = "0.0.0.0";
   GOptionEntry options[] = {{"uri", 0, 0, G_OPTION_ARG_STRING, &uri,
                              "uri or file to stream (required)", NULL},
                             {"num-loops", 0, 0, G_OPTION_ARG_INT64, &num_loops,
@@ -823,6 +824,8 @@ int main(int argc, char *argv[]) {
                              NULL},
                             {"port", 0, 0, G_OPTION_ARG_STRING, &port,
                              "port to serve on (default = '8554')", NULL},
+                            {"address", 0, 0, G_OPTION_ARG_STRING, &address,
+                             "address to serve on (default = '0.0.0.0')", NULL},
                             {"mount", 0, 0, G_OPTION_ARG_STRING, &mount_point,
                              "mount point of server (default = '/test')", NULL},
                             {NULL}};
@@ -871,13 +874,14 @@ int main(int argc, char *argv[]) {
 
   gst_rtsp_mount_points_add_factory(mounts, mount_point, factory);
   gst_rtsp_server_set_service(server, port);
+  gst_rtsp_server_set_address(server, address);
 
   g_object_unref(mounts);
 
   gst_rtsp_server_attach(server, NULL);
 
   service = gst_rtsp_server_get_service(server);
-  g_print("stream ready at rtsp://127.0.0.1:%s%s\n", service, mount_point);
+  g_print("stream ready at rtsp://%s:%s%s\n", address, service, mount_point);
   g_free(service);
   g_main_loop_run(loop);
 
